@@ -16,8 +16,8 @@ class LinearNoise:
         x_0_shape = x_0.shape
         batch_size = x_0_shape[0]
 
-        sqrt_alpha_bar = self.sqrt_alpha_bar[t].reshape(batch_size)
-        sqrt_one_minus_alpha_bar = self.sqrt_one_minus_alpha_bar[t].reshape(batch_size)
+        sqrt_alpha_bar = self.sqrt_alpha_bar.to(x_0.device)[t].reshape(batch_size)
+        sqrt_one_minus_alpha_bar = self.sqrt_one_minus_alpha_bar.to(x_0.device)[t].reshape(batch_size)
 
         for _ in range(len(x_0_shape)-1):
             sqrt_alpha_bar = sqrt_alpha_bar.unsqueeze(-1)
