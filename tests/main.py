@@ -30,7 +30,7 @@ def imshow_batch(images, labels, num_images=8):
     plt.show()
 def get_img():
     # Get a batch of images
-    data_iter = iter(dataset.get_loader())
+    data_iter = iter(dataset.get_loader(64))
     images, labels = next(data_iter)
 
     # Show an example image
