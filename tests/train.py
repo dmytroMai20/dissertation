@@ -72,7 +72,7 @@ def train(args):
     
     # Create the dataset
     #mnist = MnistDataset('train', im_path=dataset_config['im_path'])
-    loader = dataset.get_loader(batch_s=train_config['batch_size'])
+    loader = dataset.get_loader(batch_s=train_config['batch_size'], data="CelebA")
     
     # Instantiate the model
     model = Unet(model_config).to(device)
