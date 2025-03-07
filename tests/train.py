@@ -1,4 +1,5 @@
 import torch
+import torchvision
 import yaml
 import argparse
 import os
@@ -9,9 +10,45 @@ from data import dataset
 from torch.utils.data import DataLoader
 from model.unet_base import Unet
 from schedulers.LinearNoise import LinearNoise
+from torchvision.utils import make_grid
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+def infer(model, epoch, scheduler,  train_config, model_config, diffusion_config):
+    """
+        Used to infer and produce an image during training at checkpoints.
+    """
+    model.eval()
+    with torch.no_grad():
+        xt = torch.randn((train_config['num_samples_test'],
+                      model_config['im_channels'],
+                      model_config['im_size'],
+                      model_config['im_size'])).to(device)
+        for i in tqdm(reversed(range(diffusion_config['num_timesteps']))):
+            # Get prediction of noise
+            noise_pred = model(xt, torch.as_tensor(i).unsqueeze(0).to(device))
+            
+            # Use scheduler to get x0 and xt-1
+            xt, x0_pred = scheduler.reverse_process(xt, noise_pred, torch.as_tensor(i).to(device))
+            
+            # Save x0
+            
+        ims = torch.clamp(xt, -1., 1.).detach().cpu()
+        ims = (ims + 1) / 2
+            #imgs = []
+            #if not os.path.exists(os.path.join(train_config['task_name'], 'training_samples')):
+            #    os.mkdir(os.path.join(train_config['task_name'], 'training_samples'))
+            #for j in range(ims.shape[0]):
+            #    imgs.append(torchvision.transforms.ToPILImage()(ims[i]))
+            #    imgs[j].save(os.path.join(train_config['task_name'], 'training_samples', 'x0_{}.png'.format(i)))
+            #    imgs[i].close()
+        if not os.path.exists(os.path.join(train_config['task_name'], 'training_samples')):
+            os.mkdir(os.path.join(train_config['task_name'], 'training_samples'))
+        for i in range(ims.shape[0]):
+            img = torchvision.transforms.ToPILImage()(ims[i])
+            img.save(os.path.join(train_config['task_name'], 'training_samples', 'x0_{}_{}.png'.format(epoch, i)))
+            img.close()
+    model.train()
 
 def train(args):
     # Read the config file #
@@ -55,13 +92,16 @@ def train(args):
     optimizer = Adam(model.parameters(), lr=train_config['lr'])
     criterion = torch.nn.MSELoss()
     
+    images_seen = 0
+    loss_history = []
+
     # Run training
     for epoch_idx in range(num_epochs):
         losses = []
-        for im, labels in tqdm(loader):
+        for im, labels in tqdm(loader): #im shape (batch_size, channel, h, w)
             optimizer.zero_grad()
             im = im.float().to(device)
-            
+            images_seen+=im.shape[0]
             # Sample random noise
             noise = torch.randn_like(im).to(device)
             
@@ -76,13 +116,16 @@ def train(args):
             losses.append(loss.item())
             loss.backward()
             optimizer.step()
+            avg_losses = np.mean(losses)
+            loss_history.append(avg_losses)
+            infer(model, epoch_idx, scheduler, train_config, model_config, diffusion_config)    # added infer step to see progression of images
         print('Finished epoch:{} | Loss : {:.4f}'.format(
             epoch_idx + 1,
-            np.mean(losses),
+            avg_losses,
         ))
         torch.save(model.state_dict(), os.path.join(train_config['task_name'],
                                                     train_config['ckpt_name']))
-    
+        np.save(os.path.join(train_config['task_name'],train_config['ckpt_name'], 'loss_history.npy'), np.array(loss_history))
     print('Done Training ...')
     
 

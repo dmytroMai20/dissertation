@@ -1,1 +1,8 @@
 data/FashionMNIST
+default/
+data/celeba
+data/img_align_celeba
+data/__pycache__/dataset.cpython-311.pyc
+tests/__pycache__/main.cpython-311.pyc
+tests/__pycache__/sample.cpython-311.pyc
+tests/__pycache__/testceleba.cpython-311.pyc
